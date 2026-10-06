@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}组卷历史{% endblock %}
+{% block content %}
+<header class="page-head"><div><h1>组卷历史</h1><p>查看已导出的试卷记录，可直接再次导出同一份试卷。</p></div></header>
+
+<section class="history-section">
+  <div class="panel-head"><div><h2>已导出试卷</h2><p class="muted">按最近导出时间排序</p></div></div>
+  <div class="export-history-list">
+    {% for item in exports %}
+    <article class="export-history-row">
+      <div class="export-history-main"><strong>{{ item.title }}</strong><span>{{ item.export_format }} · {{ item.question_count }} 道题 · {{ item.exam_time }} · {{ item.total_score }} 分</span><small>{{ item.created_at }}</small></div>
+      <div class="actions"><a class="button" data-export-link href="{{ url_for('paper_export', paper_id=item.paper_id, fmt='word' if item.export_format == 'Word ZIP' else 'pdf') }}">再次导出 {{ item.export_format }}</a><a class="button" href="{{ url_for('paper_detail', paper_id=item.paper_id) }}">查看试卷</a></div>
+    </article>
+    {% else %}<div class="empty">还没有导出记录。</div>{% endfor %}
+  </div>
+</section>
+
+<section class="history-section">
+  <div class="panel-head"><div><h2>已保存组卷</h2><p class="muted">可继续调整题目、修改试卷信息后再导出。</p></div></div>
+  <div class="question-list">
+    {% for p in papers %}
+    <article class="question-card history-paper-card"><div><h2><a href="{{ url_for('paper_detail', paper_id=p.id) }}">{{ p.title }}</a></h2><p>{{ p.question_count }} 道题 · {{ p.exam_time }} · {{ p.total_score }} 分 · {{ p.created_at }}</p></div><div class="actions"><a class="button" href="{{ url_for('paper_detail', paper_id=p.id) }}">继续编辑</a><form method="post" action="{{ url_for('paper_delete', paper_id=p.id) }}" onsubmit="return confirm('确定删除这份组卷及其导出记录吗？')"><button class="danger">删除</button></form></div></article>
+    {% else %}<div class="empty">暂无已保存组卷。</div>{% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}导入文件 - 高中数学题库导入导出系统{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>导入文件</h1>
+    <p>Word 试卷走富文本解析；图片和扫描 PDF 走 OCR 识别，识别后先进入确认页再入库。</p>
+  </div>
+</header>
+
+<section class="import-layout">
+  <form class="upload-panel import-form" method="post" enctype="multipart/form-data">
+    <label class="drop-zone">
+      <input class="file-input" type="file" name="file" accept=".docx,.pdf,.png,.jpg,.jpeg" required>
+      <strong>选择 Word / PDF / 图片</strong>
+      <span>.docx 会保留 Word 公式和图片；.pdf、.png、.jpg、.jpeg 会使用 Tesseract OCR 识别文本。</span>
+      <span class="file-picked" data-file-picked>未选择文件</span>
+      <span class="submit-hint">PDF 扫描件或大图可能需要 10-60 秒，点击开始后请等待页面跳转。</span>
+    </label>
+    <button class="primary submit-button" type="submit" data-submit-button>开始识别</button>
+    <p class="submit-status" data-submit-status hidden>正在识别，PDF / OCR 文件可能稍慢，请稍等...</p>
+  </form>
+
+  <div class="panel note-panel">
+    <h2>识别说明</h2>
+    <p>Word：识别 “1.”、“2.” 等编号，以及 “【答案】”“【解析】” 字段，并保留公式图片。</p>
+    <p>OCR：适合扫描 PDF 或题目截图。识别后会生成 OCR 原文预览，并尝试按题号拆分入库。</p>
+    <p>确认页：可逐题修改题型、大分类、小分类和难度，也可以取消单题。</p>
+    <div class="ocr-status">
+      <strong>OCR 状态：</strong>
+      {% if ocr_status.available %}
+        <span class="tag">Tesseract 可用</span>
+        <span class="tag">{{ ocr_status.languages|join(', ') }}</span>
+        {% if ocr_status.tessdata %}<span class="tag">项目语言包</span>{% endif %}
+      {% else %}
+        <span class="tag danger-tag">不可用</span>
+      {% endif %}
+      {% for warning in ocr_status.warnings %}
+        <p class="warning-text">{{ warning }}</p>
+      {% endfor %}
+    </div>
+    <div class="ocr-status">
+      <strong>AI 分类：</strong>
+      {% if ai_status.enabled and ai_status.configured %}
+        <span class="tag">已启用</span><span class="tag">{{ ai_status.model }}</span>
+      {% elif ai_status.enabled %}
+        <span class="tag danger-tag">配置不完整</span>
+      {% else %}
+        <span class="tag">未启用，本地规则可用</span>
+      {% endif %}
+    </div>
+  </div>
+</section>
+<script>
+  (() => {
+    const form = document.querySelector('.import-form');
+    if (!form) return;
+    const input = form.querySelector('.file-input');
+    const picked = form.querySelector('[data-file-picked]');
+    const button = form.querySelector('[data-submit-button]');
+    const status = form.querySelector('[data-submit-status]');
+
+    input?.addEventListener('change', () => {
+      const file = input.files && input.files[0];
+      if (picked) {
+        picked.textContent = file ? `已选择：${file.name}` : '未选择文件';
+      }
+    });
+
+    form.addEventListener('submit', () => {
+      if (button) {
+        button.disabled = true;
+        button.textContent = '识别中...';
+      }
+      if (status) {
+        status.hidden = false;
+      }
+    });
+  })();
+</script>
+{% endblock %}

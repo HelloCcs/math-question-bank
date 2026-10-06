@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}确认导入 - 高中数学题库导入导出系统{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>确认导入</h1>
+    <p>先核对识别结果和分类，确认后再写入题库。</p>
+  </div>
+  <div class="actions">
+    <a class="button" href="{{ url_for('data_file', filename=pending.preview_relpath) }}" target="_blank">查看原文预览</a>
+  </div>
+</header>
+
+<form method="post" class="confirm-shell">
+  <aside class="confirm-side">
+    <section class="panel">
+      <h2>导入文件</h2>
+      <p class="strong-text">{{ pending.source_filename }}</p>
+      <div class="side-stats">
+        <span>识别题目：{{ pending.questions|length }}</span>
+        <span>模式：{{ pending.stats.import_mode|upper }}</span>
+        {% if pending.stats.page_count %}<span>页数：{{ pending.stats.page_count }}</span>{% endif %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>分类</h2>
+      <div class="category-list">
+        {% for item in category_counts %}
+          <span>{{ item.category_major }} <strong>{{ item.count }}</strong></span>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel preview-panel">
+      <h2>原文预览</h2>
+      <iframe src="{{ url_for('data_file', filename=pending.preview_relpath) }}" title="原文预览"></iframe>
+    </section>
+  </aside>
+
+  <section class="confirm-main">
+    <div class="confirm-toolbar">
+      <div>
+        <strong>识别题目</strong>
+        <span class="muted">可取消单题，也可修改题型、大分类、小分类和难度。</span>
+      </div>
+      <div class="actions">
+        <button class="button" type="submit" name="action" value="cancel">取消导入</button>
+        <button class="primary" type="submit" name="action" value="confirm">确认导入</button>
+      </div>
+    </div>
+
+    <div class="ai-import-status ai-import-status--{{ ai_import_status.state }}">
+      <strong>{{ ai_import_status.message }}</strong>
+      <span>{{ ai_import_status.detail }}</span>
+    </div>
+
+    <div class="confirm-list">
+      {% for q in pending.questions %}
+      <article class="question-card confirm-card">
+        <div class="question-row">
+          <label class="check-label">
+            <input type="checkbox" name="include_{{ loop.index0 }}" value="1" checked>
+            入库
+          </label>
+          <span class="pill">第{{ q.number or loop.index }}题</span>
+          <span class="pill">{{ q.question_type or '未分类' }}</span>
+          {% if q.category_major %}<span class="pill">{{ q.category_major }}</span>{% endif %}
+          {% if q.difficulty %}<span class="pill">{{ q.difficulty }}</span>{% endif %}
+          {% if q.classification_source == 'ai' %}
+            <span class="pill source-ai">AI已复识别</span>
+            {% if q.ai_review_note %}
+              <span class="pill {% if q.rule_category_major and q.ai_category_major and q.rule_category_major != q.ai_category_major %}source-warning{% else %}source-ai-note{% endif %}">{{ q.ai_review_note }}</span>
+            {% elif q.rule_category_major %}
+              <span class="pill source-ai-note">规则原判：{{ q.rule_category_major }}</span>
+            {% else %}
+              <span class="pill source-ai-note">已调用AI，旧缓存无规则对比</span>
+            {% endif %}
+          {% elif q.classification_source == 'standard_19' %}
+            <span class="pill source-rule">标准卷规则</span>
+          {% elif q.classification_source %}
+            <span class="pill source-rule">本地规则</span>
+          {% endif %}
+          {% if q.review_reason and not (q.classification_source == 'ai' and (not q.classification_confidence or q.classification_confidence <= 0) and q.review_reason == 'AI 分类待人工确认') %}
+            <span class="pill source-warning">{{ q.review_reason }}</span>
+          {% endif %}
+        </div>
+
+        <div class="meta-grid">
+          <label>题号
+            <input name="number_{{ loop.index0 }}" value="{{ q.number }}">
+          </label>
+          <label>题型
+            <select name="question_type_{{ loop.index0 }}">
+              {% for item in question_types %}
+                <option value="{{ item }}" {% if q.question_type == item %}selected{% endif %}>{{ item }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>大分类
+            <select name="category_major_{{ loop.index0 }}">
+              <option value="">未分类</option>
+              {% for item in categories %}
+                <option value="{{ item }}" {% if q.category_major == item %}selected{% endif %}>{{ item }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label>小分类
+            <input name="category_minor_{{ loop.index0 }}" value="{{ q.category_minor }}" placeholder="可手动编辑">
+          </label>
+          <label>难度
+            <select name="difficulty_{{ loop.index0 }}">
+              {% for item in difficulties %}
+                <option value="{{ item }}" {% if q.difficulty == item %}selected{% endif %}>{{ item }}</option>
+              {% endfor %}
+            </select>
+          </label>
+        </div>
+
+        <div class="rich-box">
+          {% if q.stem_html %}<div class="rich-content">{{ q.stem_html|safe }}</div>{% else %}<div class="rich-content"><p>{{ q.stem }}</p></div>{% endif %}
+          {% if q.options_html %}<div class="rich-content options">{{ q.options_html|safe }}</div>{% elif q.options %}<div class="rich-content options"><p>{{ q.options|join('\n') }}</p></div>{% endif %}
+        </div>
+
+        <details class="answer-panel">
+          <summary>查看答案和解析</summary>
+          <div class="rich-box">
+            {% if q.answer_html %}<div class="rich-content answer"><strong>答案：</strong>{{ q.answer_html|safe }}</div>{% elif q.answer %}<div class="rich-content answer"><strong>答案：</strong>{{ q.answer }}</div>{% else %}<div class="rich-content answer muted">暂无答案</div>{% endif %}
+            {% if q.analysis_html %}<div class="rich-content analysis"><strong>解析：</strong>{{ q.analysis_html|safe }}</div>{% elif q.analysis %}<div class="rich-content analysis"><strong>解析：</strong>{{ q.analysis }}</div>{% else %}<div class="rich-content analysis muted">暂无解析</div>{% endif %}
+          </div>
+        </details>
+      </article>
+      {% endfor %}
+    </div>
+  </section>
+</form>
+{% endblock %}

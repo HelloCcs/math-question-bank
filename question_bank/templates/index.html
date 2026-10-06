@@ -1,0 +1,115 @@
+﻿{% extends "base.html" %}
+{% block title %}总览 - 高中数学题库导入导出系统{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>总览</h1>
+    <p>当前存储：{{ storage }}</p>
+  </div>
+  <div class="actions">
+    <a class="primary" href="{{ url_for('import_docx') }}">导入文件</a>
+    <form method="post" action="{{ url_for('reset_library') }}" onsubmit="return confirm('确定清空题库数据、导入记录和预览文件吗？');">
+      <button class="danger" type="submit">清空数据</button>
+    </form>
+  </div>
+</header>
+
+<section class="metric-grid">
+  <div class="metric">
+    <span>题目数量</span>
+    <strong>{{ stats.question_count }}</strong>
+  </div>
+  <div class="metric">
+    <span>导入批次</span>
+    <strong>{{ stats.import_count }}</strong>
+  </div>
+  <div class="metric">
+    <span>题型覆盖</span>
+    <strong>{{ stats.type_counts|length }}</strong>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>导入记录</h2>
+  </div>
+  {% if grouped_imports %}
+    <div class="import-groups">
+      {% for group in grouped_imports %}
+        <details class="import-group" {% if loop.first %}open{% endif %}>
+          <summary>
+            <span>{{ group.label }}</span>
+            <strong>{{ group["items"]|length }} 个批次</strong>
+          </summary>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>文件</th>
+                  <th>题目</th>
+                  <th>模式</th>
+                  <th>公式</th>
+                  <th>媒体 / OCR</th>
+                  <th>预览</th>
+                  <th>时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for item in group["items"] %}
+                <tr>
+                  <td>{{ item.source_filename }}</td>
+                  <td>{{ item.question_count }}</td>
+                  <td>{{ item.stats.import_mode or 'word' }}</td>
+                  <td>{{ item.stats.formula_count or 0 }}</td>
+                  <td>
+                    {% if item.stats.import_mode == 'ocr' %}
+                      <span class="tag">{{ item.stats.ocr_engine }}</span>
+                      <span class="tag">{{ item.stats.ocr_language }}</span>
+                    {% else %}
+                      {% for ext, count in (item.stats.media_counts or {}).items() %}
+                        <span class="tag">{{ ext }} {{ count }}</span>
+                      {% else %}
+                        <span class="muted">无</span>
+                      {% endfor %}
+                    {% endif %}
+                  </td>
+                  <td><a href="{{ url_for('data_file', filename=item.preview_relpath) }}" target="_blank">打开</a></td>
+                  <td>{{ item.created_at }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </details>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="empty">还没有导入记录。</div>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>最近题目</h2>
+    <a href="{{ url_for('questions') }}">查看全部</a>
+  </div>
+  <div class="question-list compact">
+    {% for q in questions %}
+      <article class="question-card">
+        <div class="question-meta">
+          <span>{{ q.number }}</span>
+          <span>{{ q.question_type }}</span>
+          <span>{{ q.source_name }}</span>
+        </div>
+        {% if q.stem_html %}
+          <div class="rich-content">{{ q.stem_html|safe }}</div>
+        {% else %}
+          <p>{{ q.stem }}</p>
+        {% endif %}
+      </article>
+    {% else %}
+      <div class="empty">导入文件后会显示题目。</div>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

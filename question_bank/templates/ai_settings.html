@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}AI设置 - 高中数学题库导入导出系统{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>AI设置</h1>
+    <p>用于导入后的题目复识别。一般只填 API Key 即可，保存后会写入项目根目录的 <code>.env</code>。</p>
+  </div>
+</header>
+
+<section class="panel">
+  <form method="post" class="manual-form">
+    <input type="hidden" name="enabled" value="1">
+
+    <div class="meta-grid" style="grid-template-columns: minmax(260px, 1fr);">
+      <label>API Key
+        <input name="api_key" value="{{ ai_config.api_key }}" placeholder="sk-...">
+      </label>
+    </div>
+
+    <details style="margin-top:12px;">
+      <summary>高级设置</summary>
+      <div class="meta-grid" style="grid-template-columns: minmax(220px, 1.4fr) minmax(220px, 1fr) 120px; margin-top:12px;">
+        <label>API Base URL
+          <input name="base_url" value="{{ ai_config.base_url }}" placeholder="https://api.deepseek.com/v1">
+        </label>
+        <label>模型名称
+          <input name="model" value="{{ ai_config.model }}" placeholder="deepseek-chat">
+        </label>
+        <label>超时(秒)
+          <input name="timeout" type="number" min="1" step="1" value="{{ ai_config.timeout }}">
+        </label>
+      </div>
+    </details>
+
+    <div class="ocr-status">
+      <strong>当前状态</strong>
+      {% if ai_status.enabled and ai_status.configured %}
+        <span class="tag">已启用</span>
+        <span class="tag">{{ ai_status.model }}</span>
+        <span class="tag">{{ ai_status.base_url }}</span>
+      {% elif ai_status.enabled %}
+        <span class="tag danger-tag">已启用但未配置完整</span>
+      {% else %}
+        <span class="tag">未启用</span>
+      {% endif %}
+      {% if ai_status.api_key %}
+        <span class="tag">Key: {{ ai_status.api_key }}</span>
+      {% endif %}
+    </div>
+
+    <div class="actions" style="margin-top:8px;">
+      <button class="primary" type="submit">保存配置</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

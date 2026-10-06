@@ -1,0 +1,40 @@
+.venv/
+.venv-dev/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Local credentials and environment configuration
+.env
+.env.*
+!.env.example
+
+# User-generated question bank data and uploaded files
+data/
+instance/
+data/originals/
+data/previews/
+data/pending/
+data/exports/
+*.db
+*.sqlite
+*.sqlite3
+
+# Build output, portable distributions, and local diagnostics
+build/
+dist/
+portable/
+MathQuestionBank-Portable*/
+*.zip
+*.log
+environment-report.txt
+*.bak
+_qa_option_fix.*
+客户电脑部署说明.md
+mysql_init_customer.sql
+
+# Local editor and operating-system files
+.idea/
+.vscode/
+Thumbs.db
+Desktop.ini

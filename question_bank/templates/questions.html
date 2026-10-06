@@ -1,0 +1,170 @@
+﻿{% extends "base.html" %}
+{% block title %}题库管理 - 高中数学题库导入导出系统{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>题库管理</h1>
+    <p>按题型、大分类、小分类和难度归档，导出时会保留分类信息。</p>
+  </div>
+  <div class="actions">
+    <a class="button" data-export-link href="{{ url_for('export', fmt='xlsx', q=keyword, type=selected_type, category=selected_category, minor=selected_minor, difficulty=selected_difficulty, import_id=selected_import) }}">导出 Excel</a>
+    <a class="button" data-export-link href="{{ url_for('export', fmt='docx', q=keyword, type=selected_type, category=selected_category, minor=selected_minor, difficulty=selected_difficulty, import_id=selected_import) }}">导出 Word</a>
+    <a class="button" data-export-link href="{{ url_for('export', fmt='pdf', q=keyword, type=selected_type, category=selected_category, minor=selected_minor, difficulty=selected_difficulty, import_id=selected_import) }}">导出 PDF</a>
+    <a class="button" data-export-link href="{{ url_for('export', fmt='stems-docx', q=keyword, type=selected_type, category=selected_category, minor=selected_minor, difficulty=selected_difficulty, import_id=selected_import) }}">只导出题干 Word</a>
+    <a class="button" data-export-link href="{{ url_for('export', fmt='stems-pdf', q=keyword, type=selected_type, category=selected_category, minor=selected_minor, difficulty=selected_difficulty, import_id=selected_import) }}">只导出题干 PDF</a>
+  </div>
+</header>
+
+<section class="library-shell">
+  <aside class="library-side">
+    <section class="panel">
+      <h2>大分类</h2>
+      <div class="category-list">
+        <a class="{{ 'active' if not selected_category else '' }}" href="{{ url_for('questions', q=keyword, type=selected_type, minor=selected_minor, difficulty=selected_difficulty, import_id=selected_import) }}">全部 <strong>{{ category_total }}</strong></a>
+        {% for item in category_counts %}
+          <a class="{{ 'active' if selected_category == item.category_major else '' }}" href="{{ url_for('questions', q=keyword, type=selected_type, category=item.category_major, minor=selected_minor, difficulty=selected_difficulty, import_id=selected_import) }}">{{ item.category_major }} <strong>{{ item.count }}</strong></a>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>难度</h2>
+      <div class="category-list">
+        <a class="{{ 'active' if not selected_difficulty else '' }}" href="{{ url_for('questions', q=keyword, type=selected_type, category=selected_category, minor=selected_minor, import_id=selected_import) }}">全部 <strong>{{ difficulty_total }}</strong></a>
+        {% for item in difficulty_counts %}
+          <a class="{{ 'active' if selected_difficulty == item.difficulty else '' }}" href="{{ url_for('questions', q=keyword, type=selected_type, category=selected_category, minor=selected_minor, difficulty=item.difficulty, import_id=selected_import) }}">{{ item.difficulty }} <strong>{{ item.count }}</strong></a>
+        {% endfor %}
+      </div>
+    </section>
+  </aside>
+
+  <section class="library-main">
+    <form class="filter-bar expanded" method="get">
+      <input type="search" name="q" placeholder="搜索题干、答案或解析" value="{{ keyword }}">
+      <select name="type">
+        <option value="">全部题型</option>
+        {% for item in type_counts %}
+          <option value="{{ item.question_type }}" {% if selected_type == item.question_type %}selected{% endif %}>{{ item.question_type }} ({{ item.count }})</option>
+        {% endfor %}
+      </select>
+      <select name="category">
+        <option value="">全部大分类</option>
+        {% for item in categories %}
+          <option value="{{ item }}" {% if selected_category == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+      <input name="minor" placeholder="小分类" value="{{ selected_minor }}">
+      <select name="difficulty">
+        <option value="">全部难度</option>
+        {% for item in difficulties %}
+          <option value="{{ item }}" {% if selected_difficulty == item %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+      <select name="import_id">
+        <option value="">全部导入批次</option>
+        {% for item in imports %}
+          <option value="{{ item.id }}" {% if selected_import == item.id|string %}selected{% endif %}>{{ item.source_filename }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">筛选</button>
+    </form>
+
+    <div class="question-list">
+      <form method="post" action="{{ url_for('selection_add') }}" class="selection-toolbar" id="question-selection-form">
+        <input type="hidden" name="next" value="{{ request.full_path[:-1] if request.full_path.endswith('?') else request.full_path }}">
+        <button type="submit">加入选中题目</button>
+        <a class="button" href="{{ url_for('current_paper') }}">当前组卷（{{ selected_ids|length }}）</a>
+      </form>
+      {% for q in questions %}
+      <article class="question-card">
+        <div class="question-row">
+          <input class="question-checkbox" form="question-selection-form" type="checkbox" name="question_ids" value="{{ q.id }}" {% if q.id in selected_ids %}checked{% endif %}>
+          <span class="pill">第{{ q.number or loop.index }}题</span>
+          <span class="pill">{{ q.question_type or '未分类' }}</span>
+          {% if q.category_major %}<span class="pill">{{ q.category_major }}</span>{% endif %}
+          {% if q.category_minor %}<span class="pill">{{ q.category_minor }}</span>{% endif %}
+          {% if q.difficulty %}<span class="pill">{{ q.difficulty }}</span>{% endif %}
+          <span class="source">{{ q.source_name }}</span>
+          <a href="{{ url_for('data_file', filename=q.preview_relpath) }}" target="_blank">原卷预览</a>
+        </div>
+
+        <div class="rich-box">
+          {% if q.stem_html %}<div class="rich-content">{{ q.stem_html|safe }}</div>{% else %}<div class="rich-content"><p>{{ q.stem }}</p></div>{% endif %}
+          {% if q.options_html %}<div class="rich-content options">{{ q.options_html|safe }}</div>{% elif q.options %}<div class="rich-content options"><p>{{ q.options }}</p></div>{% endif %}
+        </div>
+
+        <div class="question-bottom">
+          <details class="answer-panel">
+            <summary>查看答案和解析</summary>
+            <div class="rich-box">
+              {% if q.answer_html %}<div class="rich-content answer"><strong>答案：</strong>{{ q.answer_html|safe }}</div>{% elif q.answer %}<div class="rich-content answer"><strong>答案：</strong>{{ q.answer }}</div>{% else %}<div class="rich-content answer muted">暂无答案</div>{% endif %}
+              {% if q.analysis_html %}<div class="rich-content analysis"><strong>解析：</strong>{{ q.analysis_html|safe }}</div>{% elif q.analysis %}<div class="rich-content analysis"><strong>解析：</strong>{{ q.analysis }}</div>{% else %}<div class="rich-content analysis muted">暂无解析</div>{% endif %}
+            </div>
+          </details>
+
+          <details class="edit-panel">
+            <summary class="button edit-toggle">编辑</summary>
+            <form class="meta-form edit-form" method="post" action="{{ url_for('update_question_route', question_id=q.id) }}">
+              <label>题号
+                <input name="number" value="{{ q.number or '' }}">
+              </label>
+              <label>题型
+                <select name="question_type">
+                  {% for item in question_types %}
+                    <option value="{{ item }}" {% if q.question_type == item %}selected{% endif %}>{{ item }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>大分类
+                <select name="category_major">
+                  <option value="">未分类</option>
+                  {% for item in categories %}
+                    <option value="{{ item }}" {% if q.category_major == item %}selected{% endif %}>{{ item }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label>小分类
+                <input name="category_minor" value="{{ q.category_minor or '' }}" placeholder="可手动编辑">
+              </label>
+              <label>难度
+                <select name="difficulty">
+                  {% for item in difficulties %}
+                    <option value="{{ item }}" {% if q.difficulty == item %}selected{% endif %}>{{ item }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <button type="submit">保存</button>
+
+              <div class="edit-content-grid">
+                <label>题干
+                  <textarea name="stem" rows="6">{{ q.stem or '' }}</textarea>
+                  <input type="hidden" name="original_stem" value="{{ q.stem or '' }}">
+                </label>
+                <label>选项
+                  <textarea name="options" rows="6">{{ q.options or '' }}</textarea>
+                  <input type="hidden" name="original_options" value="{{ q.options or '' }}">
+                </label>
+                <label>答案
+                  <textarea name="answer" rows="4">{{ q.answer or '' }}</textarea>
+                  <input type="hidden" name="original_answer" value="{{ q.answer or '' }}">
+                </label>
+                <label>解析
+                  <textarea name="analysis" rows="8">{{ q.analysis or '' }}</textarea>
+                  <input type="hidden" name="original_analysis" value="{{ q.analysis or '' }}">
+                </label>
+              </div>
+            </form>
+          </details>
+
+          <form class="delete-form" method="post" action="{{ url_for('delete_question_route', question_id=q.id) }}" onsubmit="return confirm('确定删除这道题吗？')">
+            <button class="danger" type="submit">删除</button>
+          </form>
+        </div>
+      </article>
+      {% else %}
+        <div class="empty">暂无题目，请先导入 Word、PDF 或图片。</div>
+      {% endfor %}
+    </div>
+  </section>
+</section>
+{% endblock %}

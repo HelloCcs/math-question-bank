@@ -1,0 +1,78 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}高中数学题库导入导出系统{% endblock %}</title>
+      <link rel="stylesheet" href="{{ url_for('static', filename='app.css') }}?v=20260902-paper-fix">
+</head>
+<body style="margin:0;min-height:100vh;background:#f4f6f8;color:#17202a;font-family:'Microsoft YaHei','Segoe UI',Arial,sans-serif;display:flex;align-items:stretch;overflow-x:hidden;">
+  <aside class="sidebar" style="background:#101827;color:#fff;min-height:100vh;padding:24px 18px;position:sticky;top:0;flex:0 0 240px;width:240px;">
+    <div class="brand">
+      <span class="brand-mark">M</span>
+      <div>
+        <strong>数学题库</strong>
+        <small>Word / OCR / SQLite</small>
+      </div>
+    </div>
+    <nav>
+      <a href="{{ url_for('index') }}" class="{{ 'active' if request.endpoint == 'index' else '' }}">总览</a>
+      <a href="{{ url_for('import_docx') }}" class="{{ 'active' if request.endpoint in ['import_docx', 'confirm_import'] else '' }}">导入文件</a>
+      <a href="{{ url_for('manual_import') }}" class="{{ 'active' if request.endpoint == 'manual_import' else '' }}">单题导入</a>
+      <a href="{{ url_for('questions') }}" class="{{ 'active' if request.endpoint == 'questions' else '' }}">题库管理</a>
+      <a href="{{ url_for('paper_builder') }}" class="{{ 'active' if request.endpoint == 'paper_builder' else '' }}">智能组卷</a>
+      <a href="{{ url_for('paper_history') }}" class="{{ 'active' if request.endpoint in ['paper_history','paper_detail','current_paper'] else '' }}">组卷历史</a>
+      <a href="{{ url_for('ai_settings') }}" class="{{ 'active' if request.endpoint == 'ai_settings' else '' }}">AI设置</a>
+    </nav>
+  </aside>
+  <main class="main" style="padding:28px;min-width:0;overflow-x:hidden;flex:1 1 auto;">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="messages">
+          {% for category, message in messages %}
+            <div class="message {{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+  </main>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['\\(', '\\)'], ['$', '$']],
+        displayMath: [['\\[', '\\]'], ['$$', '$$']],
+        processEscapes: true
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre', 'code']
+      }
+    };
+  </script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <div class="export-toast" data-export-toast hidden>正在导出，请稍等...</div>
+  <script>
+    document.addEventListener('click', (event) => {
+      const link = event.target.closest('a[data-export-link]');
+      if (!link) return;
+      const label = link.textContent.trim();
+      const toast = document.querySelector('[data-export-toast]');
+      const isPdf = /pdf/i.test(link.href) || label.includes('PDF');
+      link.classList.add('exporting');
+      link.setAttribute('aria-busy', 'true');
+      link.dataset.originalLabel = label;
+      link.textContent = isPdf ? 'PDF导出中...' : '导出中...';
+      if (toast) {
+        toast.textContent = isPdf ? 'PDF 正在生成，题量多或图片多时会慢一些，请不要重复点击。' : '正在生成导出文件，请稍等...';
+        toast.hidden = false;
+      }
+      window.setTimeout(() => {
+        link.classList.remove('exporting');
+        link.removeAttribute('aria-busy');
+        link.textContent = link.dataset.originalLabel || label;
+        if (toast) toast.hidden = true;
+      }, 120000);
+    });
+  </script>
+</body>
+</html>

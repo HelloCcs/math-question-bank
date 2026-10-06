@@ -1,0 +1,73 @@
+﻿{% extends "base.html" %}
+{% block title %}单题导入 - 高中数学题库导入导出系统{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>单题导入</h1>
+    <p>用于临时补录单题。可直接上传单题 Word、截图或扫描 PDF，也可以手动录入题干、选项、答案和解析。</p>
+  </div>
+</header>
+
+<form class="manual-form panel" method="post" enctype="multipart/form-data">
+  <label>识别单题文件
+    <input type="file" name="file" accept=".docx,.pdf,.png,.jpg,.jpeg">
+    <span class="hint">上传单题 Word、截图或扫描 PDF 后，会先进入确认页；不上传文件时，可直接手动录入。</span>
+  </label>
+
+  <div class="meta-grid manual-meta">
+    <label>题号
+      <input name="number" placeholder="如 1">
+    </label>
+    <label>题型
+      <select name="question_type">
+        {% for item in question_types %}
+          <option value="{{ item }}">{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>大分类
+      <select name="category_major">
+        {% for item in categories %}
+          <option value="{{ item }}">{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label>小分类
+      <input name="category_minor" placeholder="如 集合运算">
+    </label>
+    <label>难度
+      <select name="difficulty">
+        {% for item in difficulties %}
+          <option value="{{ item }}">{{ item }}</option>
+        {% endfor %}
+      </select>
+    </label>
+  </div>
+
+  <label>题干
+    <textarea name="stem" rows="5" placeholder="输入题干"></textarea>
+  </label>
+
+  <label>题目图片
+    <input type="file" name="stem_image" accept=".png,.jpg,.jpeg">
+    <span class="hint">适合几何图、示意图、函数图像。保存后会和题干一起显示。</span>
+  </label>
+
+  <div class="two-col manual-fields">
+    <label>选项
+      <textarea name="options" rows="5" placeholder="A. ...&#10;B. ..."></textarea>
+    </label>
+    <label>答案
+      <textarea name="answer" rows="5" placeholder="如 B"></textarea>
+    </label>
+  </div>
+
+  <label>解析
+    <textarea name="analysis" rows="6" placeholder="输入解析"></textarea>
+  </label>
+
+  <div class="card-actions">
+    <button class="primary" type="submit">保存到题库</button>
+  </div>
+</form>
+{% endblock %}

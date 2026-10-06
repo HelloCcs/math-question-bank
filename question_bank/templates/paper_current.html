@@ -1,0 +1,8 @@
+{% extends "base.html" %}{% block title %}当前组卷{% endblock %}{% block content %}
+<header class="page-head"><div><h1>当前组卷</h1><p>已选择 {{ selected_count }} 道题</p></div></header>
+<form class="panel paper-form" method="post">
+  <div class="meta-grid"><label>试卷标题<input name="title" required></label><label>考试时间<input name="exam_time" required placeholder="120 分钟"></label><label>满分<input name="total_score" required placeholder="150"></label><label>学校<input name="school"></label><label>年级<input name="grade"></label><label>班级<input name="class_name"></label></div>
+  <label>注意事项<textarea name="instructions"></textarea></label><button class="primary">保存组卷</button>
+</form>
+{% for q in questions %}<article class="question-card"><div class="question-row"><span class="pill">{{ loop.index }}</span><span class="pill">{{ q.question_type }}</span></div><div class="rich-content">{{ q.stem_html|safe if q.stem_html else q.stem }}</div></article>{% endfor %}
+{% endblock %}

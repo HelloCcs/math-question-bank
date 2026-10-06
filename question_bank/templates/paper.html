@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}智能组卷 - 高中数学题库导入导出系统{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <h1>智能组卷</h1>
+    <p>左侧选择题目，右侧实时预览；可继续添加、删除和调整顺序。</p>
+  </div>
+  <div class="actions">
+    <a class="button" href="{{ url_for('current_paper') }}" data-paper-count-link>保存当前组卷（{{ selected_ids|length }}）</a>
+    <form method="post" action="{{ url_for('selection_clear') }}">
+      <button class="button" type="submit">清空</button>
+    </form>
+  </div>
+</header>
+
+<section class="paper-workspace">
+  <aside class="paper-library panel">
+    <div class="panel-head">
+      <div>
+        <h2>题库题目</h2>
+        <p class="muted">共 {{ library_questions|length }} 道匹配题目</p>
+      </div>
+    </div>
+    <form class="workspace-filter" method="get">
+      <input name="q" value="{{ workspace_keyword }}" placeholder="搜索题干、答案或解析">
+      <select name="type">
+        <option value="">全部题型</option>
+        {% for item in question_types %}<option value="{{ item }}" {% if workspace_type == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+      </select>
+      <select name="category">
+        <option value="">全部大分类</option>
+        {% for item in categories %}<option value="{{ item }}" {% if workspace_category == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+      </select>
+      <select name="difficulty">
+        <option value="">全部难度</option>
+        {% for item in difficulties %}<option value="{{ item }}" {% if workspace_difficulty == item %}selected{% endif %}>{{ item }}</option>{% endfor %}
+      </select>
+      <button type="submit">筛选</button>
+    </form>
+    <div class="library-question-list" data-library-list>
+      {% for q in library_questions %}
+      <article class="library-question {% if q.id in selected_ids %}is-selected{% endif %}" data-question-id="{{ q.id }}">
+        <div class="question-row">
+          <span class="pill">第{{ q.number or loop.index }}题</span>
+          <span class="pill">{{ q.question_type or '未分类' }}</span>
+          {% if q.id in selected_ids %}<span class="tag">已加入</span>{% endif %}
+        </div>
+        <div class="rich-content">{{ q.stem_html|safe if q.stem_html else q.stem }}</div>
+        <form method="post" action="{{ url_for('selection_add') }}" data-ajax-add>
+          <input type="hidden" name="next" value="{{ request.full_path[:-1] if request.full_path.endswith('?') else request.full_path }}">
+          <input type="hidden" name="question_id" value="{{ q.id }}">
+          <button class="button add-question" type="submit" {% if q.id in selected_ids %}disabled{% endif %}>{{ '已加入组卷' if q.id in selected_ids else '加入组卷' }}</button>
+        </form>
+      </article>
+      {% else %}
+      <div class="empty">暂无匹配题目。</div>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <section class="paper-canvas panel">
+    <div class="panel-head">
+      <div>
+        <h2>试卷预览</h2>
+        <p class="muted" data-paper-count>当前 {{ selected_questions|length }} 道题，最多 100 道</p>
+      </div>
+      <a class="button" href="{{ url_for('current_paper') }}">填写信息并保存</a>
+    </div>
+    <div data-paper-summary>
+      {% if selected_questions %}
+        {% set ns = namespace(type='') %}
+        {% for q in selected_questions %}
+          {% if q.question_type != ns.type %}
+            {% set ns.type = q.question_type %}
+            <h3 class="paper-section-title">{{ q.question_type or '未分类' }}</h3>
+          {% endif %}
+          <article class="paper-question">
+            <div class="paper-question-toolbar">
+              <strong>第{{ loop.index }}题</strong>
+              <span class="muted">{{ q.question_type }}</span>
+              <span class="paper-spacer"></span>
+              <form method="post" action="{{ url_for('selection_move') }}" data-ajax-selection>
+                <input type="hidden" name="question_id" value="{{ q.id }}">
+                <input type="hidden" name="direction" value="up">
+                <button class="icon-button" title="上移">↑</button>
+              </form>
+              <form method="post" action="{{ url_for('selection_move') }}" data-ajax-selection>
+                <input type="hidden" name="question_id" value="{{ q.id }}">
+                <input type="hidden" name="direction" value="down">
+                <button class="icon-button" title="下移">↓</button>
+              </form>
+              <form method="post" action="{{ url_for('selection_remove') }}" data-ajax-selection>
+                <input type="hidden" name="question_id" value="{{ q.id }}">
+                <button class="icon-button danger-text" title="移除">×</button>
+              </form>
+            </div>
+            <div class="rich-content">{{ q.stem_html|safe if q.stem_html else q.stem }}</div>
+            {% if q.options_html %}
+              <div class="rich-content options">{{ q.options_html|safe }}</div>
+            {% elif q.options %}
+              <div class="rich-content options">{{ q.options }}</div>
+            {% endif %}
+          </article>
+        {% endfor %}
+      {% else %}
+        <div class="paper-empty"><strong>还没有加入题目</strong><span>从左侧点击“加入组卷”，题目会出现在这里。</span></div>
+      {% endif %}
+    </div>
+  </section>
+</section>
+
+<form id="clear-selection" method="post" action="{{ url_for('selection_clear') }}"></form>
+
+<details class="random-paper-panel panel">
+  <summary>使用条件随机组卷</summary>
+  <form method="post" class="paper-form">
+    <input type="hidden" name="mode" value="random">
+    <div class="paper-category-picker">
+      <span>大分类</span>
+      <div class="check-grid">{% for item in categories %}<label class="check-label"><input type="checkbox" name="categories" value="{{ item }}" {% if item in form_state.categories %}checked{% endif %}>{{ item }}</label>{% endfor %}</div>
+    </div>
+    <div class="meta-grid paper-filters">
+      <label>小分类<input name="category_minor" value="{{ form_state.category_minor }}"></label>
+      <label>难度<select name="difficulty"><option value="">全部</option>{% for item in difficulties %}<option value="{{ item }}">{{ item }}</option>{% endfor %}</select></label>
+    </div>
+    <div class="paper-count-grid">{% for item in question_types %}<label>{{ item }}<input type="number" name="count_{{ item }}" min="0" max="100" value="{{ form_state.counts[item] }}"></label>{% endfor %}</div>
+    <button class="primary">生成随机预览</button>
+  </form>
+</details>
+
+<script>
+const paperText = {
+  emptyTitle: '\u8fd8\u6ca1\u6709\u52a0\u5165\u9898\u76ee',
+  emptyHint: '\u4ece\u5de6\u4fa7\u70b9\u51fb\u201c\u52a0\u5165\u7ec4\u5377\u201d\uff0c\u9898\u76ee\u4f1a\u51fa\u73b0\u5728\u8fd9\u91cc\u3002',
+  unclassified: '\u672a\u5206\u7c7b',
+  addFailed: '\u52a0\u5165\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5\u3002',
+  adding: '\u52a0\u5165\u4e2d...',
+  added: '\u5df2\u52a0\u5165',
+  addedToPaper: '\u5df2\u52a0\u5165\u7ec4\u5377'
+};
+
+const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (ch) => ({
+  '&': '&amp;',
+  '<': '&lt;',
+  '>': '&gt;',
+  '"': '&quot;',
+  "'": '&#39;'
+}[ch]));
+
+const renderPaperSummary = (payload) => {
+  const panel = document.querySelector('[data-paper-summary]');
+  if (!panel || !payload || !Array.isArray(payload.selected_questions)) return;
+  const countText = document.querySelector('[data-paper-count]');
+  const countLink = document.querySelector('[data-paper-count-link]');
+  if (countText) countText.textContent = `当前 ${payload.selected_questions.length} 道题，最多 100 道`;
+  if (countLink) countLink.textContent = `保存当前组卷（${payload.selected_questions.length}）`;
+  if (!payload.selected_questions.length) {
+    panel.innerHTML = `<div class="paper-empty"><strong>${paperText.emptyTitle}</strong><span>${paperText.emptyHint}</span></div>`;
+  } else {
+    let lastType = '';
+    panel.innerHTML = payload.selected_questions.map((q, index) => {
+      const title = q.question_type || paperText.unclassified;
+      const heading = title !== lastType ? `<h3 class="paper-section-title">${escapeHtml(title)}</h3>` : '';
+      lastType = title;
+      const stem = q.stem_html || escapeHtml(q.stem || '');
+      const options = q.options_html
+        ? `<div class="rich-content options">${q.options_html}</div>`
+        : (q.options ? `<div class="rich-content options">${escapeHtml(Array.isArray(q.options) ? q.options.join('\n') : q.options)}</div>` : '');
+      const controls = `
+        <div class="paper-question-toolbar">
+          <strong>\u7b2c${index + 1}\u9898</strong>
+          <span class="muted">${escapeHtml(title)}</span>
+          <span class="paper-spacer"></span>
+          <form method="post" action="{{ url_for('selection_move') }}" data-ajax-selection>
+            <input type="hidden" name="question_id" value="${q.id}">
+            <input type="hidden" name="direction" value="up">
+            <button class="icon-button" title="\u4e0a\u79fb">\u2191</button>
+          </form>
+          <form method="post" action="{{ url_for('selection_move') }}" data-ajax-selection>
+            <input type="hidden" name="question_id" value="${q.id}">
+            <input type="hidden" name="direction" value="down">
+            <button class="icon-button" title="\u4e0b\u79fb">\u2193</button>
+          </form>
+          <form method="post" action="{{ url_for('selection_remove') }}" data-ajax-selection>
+            <input type="hidden" name="question_id" value="${q.id}">
+            <button class="icon-button danger-text" title="\u79fb\u9664">\u00d7</button>
+          </form>
+        </div>`;
+      return `${heading}<article class="paper-question">${controls}<div class="rich-content">${stem}</div>${options}</article>`;
+    }).join('');
+  }
+};
+
+const updateLibraryCard = (form, payload) => {
+  const card = form.closest('.library-question');
+  const button = form.querySelector('button[type="submit"]');
+  card?.classList.add('is-selected');
+  if (card && !card.querySelector('.question-row .tag')) {
+    const tag = document.createElement('span');
+    tag.className = 'tag';
+    tag.textContent = paperText.added;
+    card.querySelector('.question-row')?.appendChild(tag);
+  }
+  if (button) {
+    button.disabled = true;
+    button.textContent = paperText.addedToPaper;
+  }
+  const countLink = document.querySelector('[data-paper-count-link]');
+  if (countLink) countLink.textContent = `保存当前组卷（${payload.selected_count}）`;
+};
+
+document.addEventListener('submit', async (event) => {
+  const form = event.target.closest('form[data-ajax-add], form[data-ajax-selection]');
+  if (!form || !window.fetch) return;
+  event.preventDefault();
+  const button = form.querySelector('button[type="submit"]');
+  const originalText = button?.textContent || '';
+  if (button) {
+    button.disabled = true;
+    if (form.matches('[data-ajax-add]')) button.textContent = paperText.adding;
+  }
+  try {
+    const response = await fetch(form.action, {
+      method: 'POST',
+      body: new FormData(form),
+      headers: { 'X-Requested-With': 'fetch' },
+      credentials: 'same-origin'
+    });
+    const payload = await response.json();
+    if (!response.ok || !payload.ok) throw new Error(payload.message || paperText.addFailed);
+    if (form.matches('[data-ajax-add]')) updateLibraryCard(form, payload);
+    renderPaperSummary(payload);
+  } catch (error) {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalText;
+    }
+    alert(error.message || paperText.addFailed);
+  }
+});
+</script>
+{% endblock %}
