@@ -39,4 +39,4 @@
 
 - Repository URL：https://github.com/HelloCcs/math-question-bank
 - Visibility：Public。
-- Default branch：`main`（待首次推送完成）。
+- Default branch：`main`。
